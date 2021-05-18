@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+cat $ETROBO_HRP3_WORKSPACE/simdist/$1/__ev3rt_bt_out > $ETROBO_HRP3_WORKSPACE/$1/log.dat
