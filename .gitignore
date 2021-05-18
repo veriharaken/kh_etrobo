@@ -1,3 +1,16 @@
+# logdata
+*.dat
+*.csv
+*.png
+/logdata_plot.py
+
+# Doxygen and sourcetrail
+/Doxyfile
+/html/
+*.srctrlbm
+*.srctrldb
+*.srctrlprj
+
 # Prerequisites
 *.d
 
