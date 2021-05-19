@@ -19,7 +19,7 @@
 #define LIGHT_BLACK 0                                    // 黒色の光センサ値
 #define TARGET_REFLECT ((LIGHT_WHITE + LIGHT_BLACK) / 2) // PID目標,光反射値, 黒vs白のreflection中間値
 #define TARGET_HSV 59                                    // PID目標,HSV値, 青vs白のsaturation中間値
-#define MOTOR_POWER 70                                   //前進速度
+#define MOTOR_POWER 70                                   // 前進速度
 
 /** ******** ******** ******** ******** ******** ******** ******** ********
  * @brief   ライントレーサー クラス
@@ -37,7 +37,8 @@ public:
     void run(PIDController *PIDreflect,
              PIDController *PIDhsv,
              ColorSensorCalculator *ColorSensor,
-             MotorRunner *Motor);
+             MotorRunner *Motor,
+             int power);
 
     int getTurnRatio(); // turn ratio(舵角)の取得
 };
@@ -58,12 +59,14 @@ LineTracer::LineTracer()
  * @param PIDhsv        (PIDController*)HSV彩度によるPID制御
  * @param ColorSensor   (ColorSensorCalculator*)RGB=>HSVへの変換
  * @param Motor         (MotorRunner*)モーター制御
+ * @param power         (int)モーター速度(pwm:-100 to 100)
  * @return 無し
  */
 void LineTracer::run(PIDController *PIDreflect,
                      PIDController *PIDhsv,
                      ColorSensorCalculator *ColorSensor,
-                     MotorRunner *Motor)
+                     MotorRunner *Motor,
+                     int power)
 {
     // -------- HSV値PID --------
     PIDhsv->setPIDactual(ColorSensor->getHSVsat()); // 現在satuation値取得
@@ -78,7 +81,7 @@ void LineTracer::run(PIDController *PIDreflect,
         turn = PIDreflect->getPIDvalue();
 
     // -------- モーター出力 --------
-    Motor->run(MOTOR_POWER, turn);
+    Motor->run(power, turn);
 }
 
 /**

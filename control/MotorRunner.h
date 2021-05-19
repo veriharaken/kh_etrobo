@@ -32,6 +32,8 @@ public:
     MotorRunner();
     void config();
     void run(int power, int turn);
+    void leftWheel(int pwm);
+    void rightWheel(int pwm);
     void stop();
     void reset();
 };
@@ -43,7 +45,6 @@ MotorRunner::MotorRunner()
     : left_motor(EV3_PORT_C),
       right_motor(EV3_PORT_B)
 {
-    // this->config();
     this->reset();
 }
 
@@ -69,6 +70,30 @@ inline void MotorRunner::config()
 inline void MotorRunner::run(int power, int turn)
 {
     ev3_motor_steer(left_motor, right_motor, power, turn);
+}
+
+/**
+ * @brief 左車輪へのモーター出力
+ * 
+ * @fn void MotorRunner::leftWheel(int pwm)
+ * @param pwm   (int)pwmパルス幅 (-100 to 100)
+ * @return 無し
+ */
+inline void MotorRunner::leftWheel(int pwm)
+{
+    ev3_motor_set_power(left_motor, pwm);
+}
+
+/**
+ * @brief 右車輪へのモーター出力
+ * 
+ * @fn void MotorRunner::rightWheel(int pwm)
+ * @param pwm   (int)pwmパルス幅 (-100 to 100)
+ * @return 無し
+ */
+inline void MotorRunner::rightWheel(int pwm)
+{
+    ev3_motor_set_power(right_motor, pwm);
 }
 
 /**

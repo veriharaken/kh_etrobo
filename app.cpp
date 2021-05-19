@@ -52,6 +52,12 @@ static int arm_deg;                 // アーム角
 #define ARM_SWINGBACK -70           // アームの後方振り最大角
 static int gyro_deg;                // ジャイロ角
 
+#include "cmath"
+static turnangle_t meas_angle = {0}; // 計測用車輪角情報
+static int motorpower = 30;          // モーターpwm(-100 to 100)
+static int travel_deg;               // 左右車輪回転角の平均
+static int halftrack;                // 車体の1/2トレッド
+
 /** ******** ******** ******** ******** ******** ******** ******** ********
  * @brief   オブジェクトの初期化
  * @fn      void user_system_create()
@@ -129,8 +135,8 @@ void datalogging()
     fwrite(&turn, sizeof(turn), 1, bt);                     // int 'i', 4byte
     fwrite(&st_angle.omega, sizeof(st_angle.omega), 1, bt); // int 'i', 4byte
     fwrite(&hsv_val, sizeof(hsv_val), 1, bt);               // int 'i', 4byte
-    fwrite(&distance, sizeof(distance), 1, bt);             // int 'i', 4byte
-    fwrite(&gyro_deg, sizeof(gyro_deg), 1, bt);             // int 'i', 4byte
+    fwrite(&halftrack, sizeof(halftrack), 1, bt);           // int 'i', 4byte
+    fwrite(&travel_deg, sizeof(travel_deg), 1, bt);         // int 'i', 4byte
 
     // ログ計算用ループカウンタ
     COUNT_time += MAIN_CYCLE;
@@ -190,40 +196,62 @@ void tracer_task(intptr_t exinf)
     gTurnAngleCalculator->calc(&st_angle, gLineTracer->getTurnRatio());
     gyro_deg = ev3_gyro_sensor_get_angle(gyro_sensor);
 
+    //計測用
+    meas_angle.leftWheel_deg = ev3_motor_get_counts(left_motor);
+    meas_angle.rightWheel_deg = ev3_motor_get_counts(right_motor);
+    travel_deg = (std::abs(meas_angle.rightWheel_deg) + std::abs(meas_angle.leftWheel_deg)) / 2;
+
     //状態遷移
     switch (DrivingStage)
     {
     case 0:
+        // リニアに減速
+        motorpower = (1.0 - travel_deg / 720.0) * 30.0;
+
         // 走行
-        gLineTracer->run(gPIDreflect, gPIDhsv, gColorSensorCalculator, gMainMotor);
+        gLineTracer->run(gPIDreflect, gPIDhsv, gColorSensorCalculator, gMainMotor, motorpower);
 
-        //障害物検知
-        if (ObstacleCalc())
+        // 初期位置ズレ防止のために少し前進して停止する
+        if (travel_deg > 360)
         {
-            gMainMotor->stop();
-            DrivingStage = 101;
+            if (motorpower == 0)
+            {
+                // リセット
+                ev3_motor_reset_counts(left_motor);
+                ev3_motor_reset_counts(right_motor);
+                DrivingStage = 1;
+            }
         }
         break;
-
-    case 101: // 段差を上る為にアームを上げる
-        gMainMotor->stop();
-        if (SwingArm(ARM_SPEED, ARM_SWINGUP))
-            DrivingStage = 102;
+    case 1: // モーターをリセットしてから実際に0になるまでループ4msx4回分かかる、ループ変数作るのめんどいのでコピペした
+        ev3_motor_reset_counts(left_motor);
+        ev3_motor_reset_counts(right_motor);
+        DrivingStage = 2;
         break;
-
-    case 102: // 段差を上がる
-        gMainMotor->run(30, 0);
-        if (st_angle.leftWheel_deg >= 480)
-            DrivingStage = 103;
+    case 2:
+        ev3_motor_reset_counts(left_motor);
+        ev3_motor_reset_counts(right_motor);
+        DrivingStage = 3;
         break;
+    case 3:
+        ev3_motor_reset_counts(left_motor);
+        ev3_motor_reset_counts(right_motor);
+        DrivingStage = 100;
+        break;
+    case 100: // 左回転する
+        gMainMotor->leftWheel(-4);
+        gMainMotor->rightWheel(4);
 
-    case 103: // 止まってアームを下げる
-        gMainMotor->stop();
-        if (SwingArm(-1 * ARM_SPEED, ARM_ZERO))
-        {
-            ev3_motor_stop(arm_motor, false);
+        // (1/2トレッドd, ω:車体角, r:ホイール半径, θ:ホイール回転角)として
+        // 車体を中心として回転させた場合、
+        // 車輪軌跡の等式ができて  2πd * ω/360 = 2πr * θleft/360 = 2πr * θright/360 となる
+        // 右辺2つの車輪回転角は平均し、最左辺と合わせて整理すると
+        // 1/2トレッド d = (r/2ω)*(θleft+θright)
+        // 式は書いてるが実はプログラムでは計算できない。車体の回転軌跡をログから読み取って算出する必要がある。
+        halftrack = 90.0 * travel_deg / 360.0;
+
+        if (travel_deg >= 360)
             DrivingStage = 999;
-        }
         break;
 
     case 999:

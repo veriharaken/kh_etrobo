@@ -7,7 +7,7 @@ import sys
 
 logdata = []
 label = ['COUNT_time', 'drivinstage', 'turn',
-         'omega', 'hsv.val', 'distance', 'gyro_deg']
+         'omega', 'hsv.val', 'halftrack', 'travel_deg']
 colorlist = ['black', 'tab:red', 'tab:green', 'tab:blue',
              'tab:cyan', 'tab:olive', 'tab:purple',
              'tab:orange', 'tab:brown', 'tab:gray']
