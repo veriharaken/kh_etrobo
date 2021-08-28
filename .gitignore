@@ -1,7 +1,7 @@
 # logdata
-*.dat
-*.csv
-*.png
+# *.dat
+# *.csv
+# *.png
 /logdata_plot.py
 
 # Doxygen and sourcetrail
